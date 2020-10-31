@@ -7,6 +7,8 @@
 // See imgui_impl_sdl.cpp for details.
 
 #include <imgui_vita2d/imgui_vita.h>
+#include <psp2/common_dialog.h>
+#include <psp2/apputil.h>
 #include <stdio.h>
 #include <vita2d.h>
 

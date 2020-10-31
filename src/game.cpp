@@ -4,8 +4,7 @@
 #include <algorithm>
 #include <vector>
 #include <map>
-#include <vitasdk.h>
-
+#include <psp2/appmgr.h>
 #include "game.h"
 #include "sfo.h"
 #include "fs.h"
@@ -344,7 +343,7 @@ namespace GAME {
             char uri[35];
             sprintf(uri, "psgm:play?titleid=%s", game->id);
             sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-            sceKernelExitProcess(0);
+            //sceKernelExitProcess(0);
         }
         else if (game->type == TYPE_ROM || (category->id == PS1_GAMES && strcmp(category->rom_launcher_title_id, RETROARCH_TITLE_ID)==0))
         {
@@ -355,16 +354,16 @@ namespace GAME {
                     char uri[512];
                     sprintf(uri, "psgm:play?titleid=%s&param=%s&param2=%s", RETROARCH_TITLE_ID, category->core, game->rom_path);
                     sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-                    sceKernelDelayThread(1000);
-                    sceKernelExitProcess(0);
+                    //sceKernelDelayThread(1000);
+                    //sceKernelExitProcess(0);
                 }
                 else if (strcmp(category->rom_launcher_title_id, "DEDALOX64") == 0)
                 {
                     char uri[512];
                     sprintf(uri, "psgm:play?titleid=%s&param=%s", category->rom_launcher_title_id, game->rom_path);
                     sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-                    sceKernelDelayThread(1000);
-                    sceKernelExitProcess(0);
+                    //sceKernelDelayThread(1000);
+                    //sceKernelExitProcess(0);
                 }
             }
         } else if (game->type >= TYPE_PSP_ISO)
@@ -414,7 +413,7 @@ namespace GAME {
             char uri[32];
             sprintf(uri, "psgm:play?titleid=%s", adernaline_launcher_title_id);
             sceAppMgrLaunchAppByUri(0xFFFFF, uri);
-            sceKernelExitProcess(0);
+            //sceKernelExitProcess(0);
 
         }
     };

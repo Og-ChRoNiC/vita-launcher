@@ -1,5 +1,6 @@
 #include <imgui_vita2d/imgui_vita.h>
-#include <vita2d.h>
+#include <psp2/kernel/processmgr.h>
+#include <psp2/ctrl.h>
 
 #include "textures.h"
 #include "gui.h"
