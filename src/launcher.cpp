@@ -194,6 +194,10 @@ namespace Windows {
             {
                 ShowListViewWindow();
             }
+            else if (current_category->view_mode == VIEW_MODE_SCROLL)
+            {
+                ShowScrollViewWindow();
+            }
         }
         ImGui::End();
         ImGui::PopStyleVar();
@@ -211,6 +215,37 @@ namespace Windows {
         }
     }
 
+    void ShowDisplayTitle()
+    {
+        char title_text[192];
+        if (selected_game != nullptr)
+        {
+            if (selected_game->type == TYPE_BUBBLE)
+            {
+                sprintf(title_text, "%s - %s", selected_game->id, selected_game->title);
+            }
+            else
+            {
+                sprintf(title_text, "%s", selected_game->title);
+            }
+        }
+        else
+        {
+            sprintf(title_text, "No game selected");
+        }
+        
+        ImVec2 size = ImGui::CalcTextSize(title_text);
+        int x = 470-(size.x/2);
+        if (x<0) x = 10;
+        ImGui::SetCursorPosX(x);
+        if (selected_game != nullptr && selected_game->favorite)
+        {
+            ImGui::Image(reinterpret_cast<ImTextureID>(favorite_icon.id), ImVec2(16,16));
+            ImGui::SameLine();
+        }
+        ImGui::Text(title_text);
+    }
+
     void ShowGridViewWindow()
     {
         ImGuiIO& io = ImGui::GetIO(); (void)io;
@@ -220,23 +255,7 @@ namespace Windows {
         int game_start_index = (current_category->page_num * 18) - 18;
 
         ImGui::SetCursorPosY(ImGui::GetCursorPosY()-3);
-        if (selected_game != nullptr)
-        {
-            if (selected_game->type == TYPE_BUBBLE)
-            {
-                ImGui::Text("%s - %s", selected_game->id, selected_game->title);
-            }
-            else
-            {
-                ImGui::Text("%s", selected_game->title);
-            }
-            
-        }
-        else
-        {
-            ImGui::Text("No game selected");
-        }
-
+        ShowDisplayTitle();
         ImGui::SetCursorPosY(ImGui::GetCursorPosY()-1);
         ImGui::Separator();
         ImVec2 pos = ImGui::GetCursorPos();
@@ -298,42 +317,115 @@ namespace Windows {
         ImGui::SetCursorPosY(ImGui::GetCursorPosY()-1);
         ImGui::Text("Page: %d/%d", current_category->page_num, current_category->max_page); ImGui::SameLine();
 
-        ImGui::SetCursorPosX(350);
-        ImGui::Image(reinterpret_cast<ImTextureID>(circle_icon.id), ImVec2(16,16)); ImGui::SameLine();
-        ImGui::Text("Un-Select"); ImGui::SameLine();
-        ImGui::Image(reinterpret_cast<ImTextureID>(square_icon.id), ImVec2(16,16)); ImGui::SameLine();
-        ImGui::Text("Favorite"); ImGui::SameLine();
-        ImGui::Image(reinterpret_cast<ImTextureID>(triangle_icon.id), ImVec2(16,16)); ImGui::SameLine();
-        ImGui::Text("Settings"); ImGui::SameLine();
-        ImGui::Image(reinterpret_cast<ImTextureID>(cross_icon.id), ImVec2(16,16)); ImGui::SameLine();
-        ImGui::Text("Select"); ImGui::SameLine();
+        ShowCommonSubWindow();
+    }
 
-        if (handle_add_rom_game)
+    void ShowScrollViewWindow()
+    {
+        ImGuiIO& io = ImGui::GetIO(); (void)io;
+        io.KeyRepeatRate = 0.05f;
+        ImGuiStyle* style = &ImGui::GetStyle();
+        ImGui_ImplVita2D_SetAnalogRepeatDelay(50000);
+
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY()-3);
+        ShowDisplayTitle();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY()-1);
+        ImGui::Separator();
+        ImGui::SetNextWindowSizeConstraints(ImVec2(950, 474), ImVec2(950,474));
+        char grid_name[64];
+        sprintf(grid_name, "%s#grid", current_category->title);
+        ImGui::BeginChild(grid_name);
+        if (ImGui::IsWindowAppearing())
         {
-            HandleAddNewRomGame();
+            ImGui::SetWindowFocus();
         }
-
-        if (handle_add_iso_game)
+        ImVec2 pos = ImGui::GetCursorPos();
+        int col = 0;
+        int row = 0;
+        ImGui::Columns(6, current_category->title, false);
+        for (int button_id=0; button_id<current_category->games.size(); button_id++)
         {
-            HandleAddNewIsoGame();
-        }
+            char id[32];
+            char sel_id[32];
+            sprintf(id, "%d#image", button_id);
+            sprintf(sel_id, "##%d", button_id);
+            Game *game = &current_category->games[button_id];
+            ImGui::BeginGroup();
+            ImVec2 pos = ImGui::GetCursorPos();
+            ImGui::SetCursorPos(ImVec2(pos.x-5, pos.y));
+            if (ImGui::Button(sel_id, ImVec2(148,154)))
+            {
+                if (game->type < TYPE_PSP_ISO)
+                {
+                    GAME::Launch(game, nullptr);
+                }
+                else
+                {
+                    handle_boot_game = true;
+                }
+            }
+            if (ImGui::IsItemFocused())
+            {
+                selected_game = game;
+                tab_infocus = false;
+            }
 
-        if (handle_add_eboot_game)
-        {
-            HandleAddNewEbootGame();
+            ImGui::SetCursorPos(ImVec2(pos.x, pos.y+4));
+            ImGui::Image(reinterpret_cast<ImTextureID>(game->tex.id), ImVec2(138,127));
+            if (ImGui::IsItemVisible())
+            {
+                if (game->tex.id == no_icon.id && !game->icon_missing)
+                {
+                    if (game->visible == 0)
+                    {
+                        game->visible++;
+                        game->visible_time = sceKernelGetProcessTimeWide();
+                    }
+                    else if (button_id % 6 == 0)
+                    {
+                        uint64_t current_time = sceKernelGetProcessTimeWide();
+                        if (current_time - game->visible_time > 200000 && !game->thread_started)
+                        {
+                            GAME::StartLoadGameImageThread(current_category->id, button_id);
+                            game->thread_started = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                game->visible = 0;
+                game->thread_started = false;
+                if (game->tex.id != no_icon.id)
+                {
+                    Tex tmp = game->tex;
+                    game->tex = no_icon;
+                    Textures::Free(&tmp);
+                }
+            }
+            
+            ImGui::SetCursorPosY(ImGui::GetCursorPosY()-2);
+            if (game->favorite)
+            {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX()-5);
+                ImGui::Image(reinterpret_cast<ImTextureID>(favorite_icon.id), ImVec2(16,16));
+                ImGui::SameLine(); ImGui::SetCursorPosX(ImGui::GetCursorPosX()-10);
+                ImGui::Text("%.14s", game->title);
+            }
+            else
+            {
+                ImGui::SetCursorPosX(ImGui::GetCursorPosX()-2);
+                ImGui::Text("%.15s", game->title);
+            }
+            ImGui::EndGroup();
+            ImGui::NextColumn();
         }
+        ImGui::EndChild();
+        ImGui::Columns(1);
 
-        if (handle_boot_game)
-        {
-            HandleAdrenalineGame();
-        }
-
-        if (handle_move_game)
-        {
-            HandleMoveGame();
-        }
-
-        ShowSettingsDialog();
+        ImGui::SetCursorPos(ImVec2(pos.x, 521));
+        ImGui::Separator();
+        ShowCommonSubWindow();
     }
 
     void ShowListViewWindow()
@@ -421,8 +513,12 @@ namespace Windows {
         ImGui::EndChild();
         ImGui::SetCursorPosY(520);
         ImGui::Separator();
+        ShowCommonSubWindow();
+    }
 
-        ImGui::SetCursorPosX(300);
+    void ShowCommonSubWindow()
+    {
+        ImGui::SetCursorPosX(350);
         ImGui::Image(reinterpret_cast<ImTextureID>(circle_icon.id), ImVec2(16,16)); ImGui::SameLine();
         ImGui::Text("Un-Select"); ImGui::SameLine();
         ImGui::Image(reinterpret_cast<ImTextureID>(square_icon.id), ImVec2(16,16)); ImGui::SameLine();
@@ -493,7 +589,10 @@ namespace Windows {
                             category_selected = -1;
 
                             GAME::DeleteGamesImages(previous_category);
-                            GAME::StartLoadImagesThread(current_category->id, current_category->page_num, current_category->page_num);
+                            if(current_category->view_mode == VIEW_MODE_GRID)
+                            {
+                                GAME::StartLoadImagesThread(current_category->id, current_category->page_num, current_category->page_num);
+                            }
                         }
                         ImGui::EndTabItem();
                     }
@@ -555,7 +654,8 @@ namespace Windows {
 
                     ImGui::Text("View Mode:"); ImGui::SameLine();
                     ImGui::SetCursorPosX(posX + 100);
-                    ImGui::RadioButton("Grid", &view_mode, 0); ImGui::SameLine();
+                    ImGui::RadioButton("Page Grid", &view_mode, 0); ImGui::SameLine();
+                    ImGui::RadioButton("Scroll Grid", &view_mode, 2); ImGui::SameLine();
                     ImGui::RadioButton("List", &view_mode, 1);
 
                     if (current_category->id != FAVORITES && current_category->id != HOMEBREWS)
@@ -1149,10 +1249,12 @@ namespace Windows {
 
         if (!game_added)
         {
-            ImGui::OpenPopup("Select game");
+            char game_type[64];
+            sprintf(game_type, "Select %s game", current_category->alt_title);
+            ImGui::OpenPopup(game_type);
             ImGui::SetNextWindowPos(ImVec2(150, 100));
             ImGui::SetNextWindowSize(ImVec2(630,330));
-            if (ImGui::BeginPopupModal("Select game", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+            if (ImGui::BeginPopupModal(game_type, nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
             {
                 if (games_on_filesystem.size() == 0)
                 {
@@ -1173,7 +1275,7 @@ namespace Windows {
                     std::sort(games_on_filesystem.begin(), games_on_filesystem.end());
                 }
                 ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(620,260));
-                ImGui::BeginChild("game list");
+                ImGui::BeginChild(game_type);
                 if (ImGui::IsWindowAppearing())
                 {
                     ImGui::SetWindowFocus();
@@ -1259,10 +1361,10 @@ namespace Windows {
 
         if (!game_added)
         {
-            ImGui::OpenPopup("Select game");
+            ImGui::OpenPopup("Select PSP ISO game");
             ImGui::SetNextWindowPos(ImVec2(150, 100));
             ImGui::SetNextWindowSize(ImVec2(620,330));
-            if (ImGui::BeginPopupModal("Select game", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+            if (ImGui::BeginPopupModal("Select PSP ISO game", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
             {
                 if (games_on_filesystem.size() == 0)
                 {
@@ -1283,7 +1385,7 @@ namespace Windows {
                     std::sort(games_on_filesystem.begin(), games_on_filesystem.end());
                 }
                 ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(610,260));
-                ImGui::BeginChild("game list");
+                ImGui::BeginChild("psp iso game list");
                 if (ImGui::IsWindowAppearing())
                 {
                     ImGui::SetWindowFocus();
@@ -1380,10 +1482,10 @@ namespace Windows {
 
         if (!game_added)
         {
-            ImGui::OpenPopup("Select game");
+            ImGui::OpenPopup("Select EBOOT game");
             ImGui::SetNextWindowPos(ImVec2(150, 100));
             ImGui::SetNextWindowSize(ImVec2(630,330));
-            if (ImGui::BeginPopupModal("Select game", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
+            if (ImGui::BeginPopupModal("Select EBOOT game", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar))
             {
                 if (games_on_filesystem.size() == 0)
                 {
@@ -1404,7 +1506,7 @@ namespace Windows {
                     std::sort(games_on_filesystem.begin(), games_on_filesystem.end());
                 }
                 ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(620,260));
-                ImGui::BeginChild("game list");
+                ImGui::BeginChild("eboot game list");
                 if (ImGui::IsWindowAppearing())
                 {
                     ImGui::SetWindowFocus();
@@ -1692,6 +1794,7 @@ namespace Windows {
         WriteString(tmp_category->title, CONFIG_ALT_TITLE, tmp_category->alt_title);
         WriteIniFile(CONFIG_INI_FILE);
         CloseIniFile();
+        paused = false;
     }
 
     void BeforeTitleChangeCallback(int ime_result)

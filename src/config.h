@@ -27,12 +27,14 @@
 #define CONFIG_HIDE_TITLE_IDS "hidden_title_ids"
 #define CONFIG_ALT_TITLE "alt_title"
 #define CONFIG_ALT_CORES "alternate_cores"
+#define CONFIG_CATEGORY_ORDER "category_order"
 
 #define DEFAULT_ADERNALINE_LAUNCHER_TITLE_ID "ADRLANCHR"
 #define RETROARCH_TITLE_ID "RETROVITA"
 
 #define VIEW_MODE_GRID 0
 #define VIEW_MODE_LIST 1
+#define VIEW_MODE_SCROLL 2
 
 #define CONFIG_GLOBAL "Global"
 #define CONFIG_SHOW_ALL_CATEGORIES "show_all_categories"
