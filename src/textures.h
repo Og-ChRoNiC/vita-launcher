@@ -2,7 +2,7 @@
 #define LAUNCHER_TEXTURES_H
 
 #include <string>
-#include <vita2d.h>
+#include <vita2d_sys.h>
 
 typedef struct {
     vita2d_texture *id=0;

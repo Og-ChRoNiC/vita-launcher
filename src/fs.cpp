@@ -206,7 +206,7 @@ namespace FS {
             else if (ret == 0)
                 break;
 
-            if (SCE_S_ISDIR(dirent.d_stat.st_mode))
+            if (SCE_STM_ISDIR(dirent.d_stat.st_mode))
             {
                 std::vector<std::string> files = FS::ListFiles(path + "/" + dirent.d_name);
                 for (std::vector<std::string>::iterator it=files.begin(); it!=files.end(); )

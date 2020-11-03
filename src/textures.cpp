@@ -30,7 +30,7 @@ namespace Textures {
 	bool LoadImageFile(const std::string filename, Tex *texture)
 	{
 		// Load from file
-		vita2d_texture *image = vita2d_load_PNG_file(filename.c_str());
+		vita2d_texture *image = vita2d_load_PNG_file(filename.c_str(), 0);
 		if (image == NULL) {
 			return false;
 		}
